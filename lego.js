@@ -13,8 +13,35 @@ exports.isStar = false;
  * @returns {Array}
  */
 exports.query = function (collection) {
-    return collection;
+    var args = [].slice.call(arguments).slice(1);
+    var coll = [].slice.call(collection);
+    args.sort(sortQueries);
+    for (var arg in args) {
+        if (args.hasOwnProperty(arg)) {
+            coll = args[arg].func(coll, args[arg].params);
+        }
+    }
+
+    return coll;
 };
+
+var funcPriorities = {
+    sortFriends: 1,
+    filterFriends: 1,
+    selectFields: 2,
+    formatField: 3,
+    limitFriends: 3
+};
+function sortQueries(query1, query2) {
+    if (funcPriorities[query1.func.name] < funcPriorities[query2.func.name]) {
+        return -1;
+    }
+    if (funcPriorities[query1.func.name] > funcPriorities[query2.func.name]) {
+        return 1;
+    }
+
+    return 0;
+}
 
 function convertForQuery(func, params) {
     return { func: func,
@@ -67,7 +94,7 @@ exports.filterIn = function (property, values) {
  */
 function filterInFilter(friend) {
     for (var filter in this[1]) {
-        if (friend[this[0]] === filter) {
+        if (friend[this[0]] === this[1][filter]) {
             return friend;
         }
     }
@@ -81,12 +108,39 @@ function filterFriends(friends, params) {
  * Сортировка коллекции по полю
  * @param {String} property – Свойство для фильтрации
  * @param {String} order – Порядок сортировки (asc - по возрастанию; desc – по убыванию)
+ * @returns {Object}
  */
 exports.sortBy = function (property, order) {
-    console.info(property, order);
+    if (order === 'asc') {
+        return convertForQuery(sortFriends, [property, sortAscComparer]);
+    } else if (order === 'desc') {
+        return convertForQuery(sortFriends, [property, sortDescComparer]);
+    }
 
-    return;
 };
+
+var sortParam;
+function sortFriends(friends, params) {
+    sortParam = params[0];
+    friends.sort(params[1]);
+
+    return friends;
+}
+
+function sortAscComparer(friend1, friend2) {
+    if (friend1[sortParam] < friend2[sortParam]) {
+        return -1;
+    }
+    if (friend1[sortParam] > friend2[sortParam]) {
+        return 1;
+    }
+
+    return 0;
+}
+
+function sortDescComparer(friend1, friend2) {
+    return sortAscComparer(friend2, friend1);
+}
 
 /**
  * Форматирование поля
@@ -117,7 +171,7 @@ function clone(obj) {
 function formatFriendsField(friend) {
     var formattedFriend = clone(friend);
     if (formattedFriend.hasOwnProperty(this[0])) {
-        clone[this[0]] = this[1](formattedFriend[this[0]]);
+        formattedFriend[this[0]] = this[1](formattedFriend[this[0]]);
     }
 
     return formattedFriend;
@@ -130,12 +184,15 @@ function formatField(friends, params) {
 /**
  * Ограничение количества элементов в коллекции
  * @param {Number} count – Максимальное количество элементов
+ * @returns {Object}
  */
 exports.limit = function (count) {
-    console.info(count);
-
-    return;
+    return convertForQuery(limitFriends, [count]);
 };
+
+function limitFriends(friends, count) {
+    return friends.slice(0, count);
+}
 
 if (exports.isStar) {
 
