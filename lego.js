@@ -142,8 +142,14 @@ function sortAscComparer(friend1, friend2) {
     return 0;
 }
 
+/**
+ * @this sortDescComparer
+ * @param {Object} friend1
+ * @param {Object} friend2
+ * @returns {number}
+ */
 function sortDescComparer(friend1, friend2) {
-    return sortAscComparer(friend2, friend1);
+    return sortAscComparer.bind(this)(friend2, friend1);
 }
 
 /**
