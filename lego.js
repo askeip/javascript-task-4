@@ -119,19 +119,23 @@ exports.sortBy = function (property, order) {
 
 };
 
-var sortParam;
 function sortFriends(friends, params) {
-    sortParam = params[0];
-    friends.sort(params[1]);
+    friends.sort(params[1].bind(params[0]));
 
     return friends;
 }
 
+/**
+ * @this sortAscComparer
+ * @param friend1
+ * @param friend2
+ * @returns {number}
+ */
 function sortAscComparer(friend1, friend2) {
-    if (friend1[sortParam] < friend2[sortParam]) {
+    if (friend1[this] < friend2[this]) {
         return -1;
     }
-    if (friend1[sortParam] > friend2[sortParam]) {
+    if (friend1[this] > friend2[this]) {
         return 1;
     }
 
