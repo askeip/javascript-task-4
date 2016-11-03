@@ -127,8 +127,8 @@ function sortFriends(friends, params) {
 
 /**
  * @this sortAscComparer
- * @param friend1
- * @param friend2
+ * @param {Object} friend1
+ * @param {Object} friend2
  * @returns {number}
  */
 function sortAscComparer(friend1, friend2) {
