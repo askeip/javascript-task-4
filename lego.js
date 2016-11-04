@@ -13,39 +13,34 @@ exports.isStar = false;
  * @returns {Array}
  */
 exports.query = function (collection) {
-    var args = [].slice.call(arguments).slice(1);
-    var coll = [].slice.call(collection);
-    args.sort(sortQueries);
-    for (var arg in args) {
-        if (args.hasOwnProperty(arg)) {
-            coll = args[arg].func(coll, args[arg].params);
+    var queries = [].slice.call(arguments).slice(1);
+    var friends = [].slice.call(collection);
+    queries.sort(sortQueries);
+    for (var query in queries) {
+        if (queries.hasOwnProperty(query)) {
+            friends = queries[query](friends);
         }
     }
 
-    return coll;
+    return friends;
 };
 
-var funcPriorities = {
-    sortFriends: 1,
-    filterFriends: 1,
-    selectFields: 2,
-    formatField: 3,
-    limitFriends: 3
+var FUNC_PRIORITIES = {
+    sortBy: 1,
+    filterIn: 1,
+    select: 2,
+    format: 3,
+    limit: 3
 };
 function sortQueries(query1, query2) {
-    if (funcPriorities[query1.func.name] < funcPriorities[query2.func.name]) {
+    if (FUNC_PRIORITIES[query1.name] < FUNC_PRIORITIES[query2.name]) {
         return -1;
     }
-    if (funcPriorities[query1.func.name] > funcPriorities[query2.func.name]) {
+    if (FUNC_PRIORITIES[query1.name] > FUNC_PRIORITIES[query2.name]) {
         return 1;
     }
 
     return 0;
-}
-
-function convertForQuery(func, params) {
-    return { func: func,
-    params: params };
 }
 
 /**
@@ -54,28 +49,21 @@ function convertForQuery(func, params) {
  * @returns {Object}
  */
 exports.select = function () {
-    return convertForQuery(selectFields, [].slice.call(arguments));
+    var params = [].slice.call(arguments);
+
+    return function select(friends) {
+        return friends.map(function (friend) {
+            var mappedFriend = {};
+            for (var param in params) {
+                if (params.hasOwnProperty(param) && friend.hasOwnProperty(params[param])) {
+                    mappedFriend[params[param]] = friend[params[param]];
+                }
+            }
+
+            return mappedFriend;
+        });
+    };
 };
-
-/**
- * @this mapFriends
- * @param {Object} friend
- * @returns {Object}
- */
-function mapFriends(friend) {
-    var mappedFriend = {};
-    for (var param in this) {
-        if (this.hasOwnProperty(param) && friend.hasOwnProperty(this[param])) {
-            mappedFriend[this[param]] = friend[this[param]];
-        }
-    }
-
-    return mappedFriend;
-}
-
-function selectFields(friends, params) {
-    return friends.map(mapFriends, params);
-}
 
 /**
  * Фильтрация поля по массиву значений
@@ -84,25 +72,18 @@ function selectFields(friends, params) {
  * @returns {Object}
  */
 exports.filterIn = function (property, values) {
-    return convertForQuery(filterFriends, [property, values]);
+    return function filterIn(friends) {
+        return friends.filter(function (friend) {
+            for (var filter in values) {
+                if (friend[property] === values[filter]) {
+                    return friend;
+                }
+            }
+
+            return false;
+        });
+    };
 };
-
-/**
- * @this formatFriendsField
- * @param {Object} friend
- * @returns {Object}
- */
-function filterInFilter(friend) {
-    for (var filter in this[1]) {
-        if (friend[this[0]] === this[1][filter]) {
-            return friend;
-        }
-    }
-}
-
-function filterFriends(friends, params) {
-    return friends.filter(filterInFilter, params);
-}
 
 /**
  * Сортировка коллекции по полю
@@ -111,46 +92,14 @@ function filterFriends(friends, params) {
  * @returns {Object}
  */
 exports.sortBy = function (property, order) {
-    if (order === 'asc') {
-        return convertForQuery(sortFriends, [property, sortAscComparer]);
-    } else if (order === 'desc') {
-        return convertForQuery(sortFriends, [property, sortDescComparer]);
-    }
+    return function sortBy(friends) {
+        var comparer = order === 'asc' ? 1 : -1;
 
+        return friends.sort(function (friend1, friend2) {
+            return (friend1[property] - friend2[property]) * comparer;
+        });
+    };
 };
-
-function sortFriends(friends, params) {
-    friends.sort(params[1].bind(params[0]));
-
-    return friends;
-}
-
-/**
- * @this sortAscComparer
- * @param {Object} friend1
- * @param {Object} friend2
- * @returns {number}
- */
-function sortAscComparer(friend1, friend2) {
-    if (friend1[this] < friend2[this]) {
-        return -1;
-    }
-    if (friend1[this] > friend2[this]) {
-        return 1;
-    }
-
-    return 0;
-}
-
-/**
- * @this sortDescComparer
- * @param {Object} friend1
- * @param {Object} friend2
- * @returns {number}
- */
-function sortDescComparer(friend1, friend2) {
-    return sortAscComparer.bind(this)(friend2, friend1);
-}
 
 /**
  * Форматирование поля
@@ -159,7 +108,16 @@ function sortDescComparer(friend1, friend2) {
  * @returns {Object}
  */
 exports.format = function (property, formatter) {
-    return convertForQuery(formatField, [property, formatter]);
+    return function format(friends) {
+        return friends.map(function (friend) {
+            var formattedFriend = clone(friend);
+            if (formattedFriend.hasOwnProperty(property)) {
+                formattedFriend[property] = formatter(formattedFriend[property]);
+            }
+
+            return formattedFriend;
+        });
+    };
 };
 
 function clone(obj) {
@@ -174,35 +132,15 @@ function clone(obj) {
 }
 
 /**
- * @this formatFriendsField
- * @param {Object} friend
- * @returns {Object}
- */
-function formatFriendsField(friend) {
-    var formattedFriend = clone(friend);
-    if (formattedFriend.hasOwnProperty(this[0])) {
-        formattedFriend[this[0]] = this[1](formattedFriend[this[0]]);
-    }
-
-    return formattedFriend;
-}
-
-function formatField(friends, params) {
-    return friends.map(formatFriendsField, params);
-}
-
-/**
  * Ограничение количества элементов в коллекции
  * @param {Number} count – Максимальное количество элементов
  * @returns {Object}
  */
 exports.limit = function (count) {
-    return convertForQuery(limitFriends, [count]);
+    return function limit(friends) {
+        return friends.slice(0, count);
+    };
 };
-
-function limitFriends(friends, count) {
-    return friends.slice(0, count);
-}
 
 if (exports.isStar) {
 
