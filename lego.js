@@ -128,7 +128,7 @@ exports.format = function (property, formatter) {
 };
 
 function clone(obj) {
-    var copy = obj.constructor();
+    var copy = {};
     for (var attr in obj) {
         if (obj.hasOwnProperty(attr)) {
             copy[attr] = obj[attr];
