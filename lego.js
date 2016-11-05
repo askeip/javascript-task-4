@@ -13,21 +13,18 @@ exports.isStar = false;
  * @returns {Array}
  */
 exports.query = function (collection) {
-    var queries = [].slice.call(arguments).slice(1);
+    var queries = [].slice.call(arguments, 1);
     var friends = [].slice.call(collection);
     queries.sort(sortQueries);
-    for (var query in queries) {
-        if (queries.hasOwnProperty(query)) {
-            friends = queries[query](friends);
-        }
-    }
 
-    return friends;
+    return queries.reduce(function (acc, query) {
+        return query(acc);
+    }, friends);
 };
 
 var FUNC_PRIORITIES = {
+    filterIn: 0,
     sortBy: 1,
-    filterIn: 1,
     select: 2,
     format: 3,
     limit: 3
