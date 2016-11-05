@@ -55,7 +55,8 @@ exports.select = function () {
         return friends.map(function (friend) {
             var mappedFriend = {};
             for (var param in params) {
-                if (params.hasOwnProperty(param) && friend.hasOwnProperty(params[param])) {
+                if (params.hasOwnProperty(param) && friend
+                        .hasOwnProperty(params[param])) {
                     mappedFriend[params[param]] = friend[params[param]];
                 }
             }
@@ -96,7 +97,13 @@ exports.sortBy = function (property, order) {
         var comparer = order === 'asc' ? 1 : -1;
 
         return friends.sort(function (friend1, friend2) {
-            return (friend1[property] - friend2[property]) * comparer;
+            if (friend1[property] < friend2[property]) {
+                return -1 * comparer;
+            } else if (friend1[property] > friend2[property]) {
+                return comparer;
+            }
+
+            return 0;
         });
     };
 };
