@@ -6,6 +6,18 @@
  */
 exports.isStar = false;
 
+var FUNC_PRIORITIES = {
+    filterIn: 0,
+    sortBy: 1,
+    select: 2,
+    format: 3,
+    limit: 3
+};
+
+function sortQueries(query1, query2) {
+    return FUNC_PRIORITIES[query1.name] - FUNC_PRIORITIES[query2.name];
+}
+
 /**
  * Запрос к коллекции
  * @param {Array} collection
@@ -14,31 +26,13 @@ exports.isStar = false;
  */
 exports.query = function (collection) {
     var queries = [].slice.call(arguments, 1);
-    var friends = [].slice.call(collection);
+    var friends = collection.slice(0);
     queries.sort(sortQueries);
 
-    return queries.reduce(function (acc, query) {
-        return query(acc);
+    return queries.reduce(function (prevResult, query) {
+        return query(prevResult);
     }, friends);
 };
-
-var FUNC_PRIORITIES = {
-    filterIn: 0,
-    sortBy: 1,
-    select: 2,
-    format: 3,
-    limit: 3
-};
-function sortQueries(query1, query2) {
-    if (FUNC_PRIORITIES[query1.name] < FUNC_PRIORITIES[query2.name]) {
-        return -1;
-    }
-    if (FUNC_PRIORITIES[query1.name] > FUNC_PRIORITIES[query2.name]) {
-        return 1;
-    }
-
-    return 0;
-}
 
 /**
  * Выбор полей
@@ -51,12 +45,11 @@ exports.select = function () {
     return function select(friends) {
         return friends.map(function (friend) {
             var mappedFriend = {};
-            for (var param in params) {
-                if (params.hasOwnProperty(param) && friend
-                        .hasOwnProperty(params[param])) {
-                    mappedFriend[params[param]] = friend[params[param]];
+            params.forEach(function (param) {
+                if (friend.hasOwnProperty(param)) {
+                    mappedFriend[param] = friend[param];
                 }
-            }
+            });
 
             return mappedFriend;
         });
@@ -72,10 +65,10 @@ exports.select = function () {
 exports.filterIn = function (property, values) {
     return function filterIn(friends) {
         return friends.filter(function (friend) {
-            for (var filter in values) {
-                if (friend[property] === values[filter]) {
-                    return friend;
-                }
+            if (values.some(function (filter) {
+                return friend[property] === filter;
+            })) {
+                return friend;
             }
 
             return false;
@@ -125,14 +118,11 @@ exports.format = function (property, formatter) {
 };
 
 function clone(obj) {
-    var copy = {};
-    for (var attr in obj) {
-        if (obj.hasOwnProperty(attr)) {
-            copy[attr] = obj[attr];
-        }
-    }
+    return Object.keys(obj).reduce(function (copy, property) {
+        copy[property] = obj[property];
 
-    return copy;
+        return copy;
+    }, {});
 }
 
 /**
