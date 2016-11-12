@@ -56,7 +56,7 @@ exports.select = function () {
                 mappedFriend[property] = friend[property];
 
                 return mappedFriend;
-            }, []);
+            }, {});
         });
     };
 };
