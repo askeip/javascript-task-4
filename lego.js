@@ -53,7 +53,9 @@ exports.select = function () {
     return function select(friends) {
         return friends.map(function (friend) {
             return params.reduce(function (mappedFriend, property) {
-                mappedFriend[property] = friend[property];
+                if (friend.hasOwnProperty(property)) {
+                    mappedFriend[property] = friend[property];
+                }
 
                 return mappedFriend;
             }, {});
