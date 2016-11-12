@@ -18,6 +18,14 @@ function sortQueries(query1, query2) {
     return FUNC_PRIORITIES[query1.name] - FUNC_PRIORITIES[query2.name];
 }
 
+function clone(obj) {
+    return Object.keys(obj).reduce(function (copy, property) {
+        copy[property] = obj[property];
+
+        return copy;
+    }, {});
+}
+
 /**
  * Запрос к коллекции
  * @param {Array} collection
@@ -44,14 +52,11 @@ exports.select = function () {
 
     return function select(friends) {
         return friends.map(function (friend) {
-            var mappedFriend = {};
-            params.forEach(function (param) {
-                if (friend.hasOwnProperty(param)) {
-                    mappedFriend[param] = friend[param];
-                }
-            });
+            return params.reduce(function (mappedFriend, property) {
+                mappedFriend[property] = friend[property];
 
-            return mappedFriend;
+                return mappedFriend;
+            }, []);
         });
     };
 };
@@ -65,13 +70,9 @@ exports.select = function () {
 exports.filterIn = function (property, values) {
     return function filterIn(friends) {
         return friends.filter(function (friend) {
-            if (values.some(function (filter) {
-                return friend[property] === filter;
-            })) {
-                return friend;
-            }
-
-            return false;
+            return values.some(function (filterValue) {
+                return friend[property] === filterValue;
+            });
         });
     };
 };
@@ -89,11 +90,9 @@ exports.sortBy = function (property, order) {
         return friends.sort(function (friend1, friend2) {
             if (friend1[property] < friend2[property]) {
                 return -1 * comparer;
-            } else if (friend1[property] > friend2[property]) {
-                return comparer;
             }
 
-            return 0;
+            return friend1[property] > friend2[property] ? comparer : 0;
         });
     };
 };
@@ -116,14 +115,6 @@ exports.format = function (property, formatter) {
         });
     };
 };
-
-function clone(obj) {
-    return Object.keys(obj).reduce(function (copy, property) {
-        copy[property] = obj[property];
-
-        return copy;
-    }, {});
-}
 
 /**
  * Ограничение количества элементов в коллекции
